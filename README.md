@@ -90,6 +90,10 @@ You can customize the behavior of `django-clickify` by adding the following sett
       "REMOTE_ADDR",
   ]
   ```
+- `CLICKIFY_QR_GENERATOR`: Function to generate a QR Code for display in Django Admin's Change Screen
+- `CLICKIFY_QR_BASE_URI`: The base URI format string ("https://yourdomain.com/c/{slug}")
+- `CLICKIFY_QR_LOGO_PATH`: Optional Image to add to center of QR Code ("images/qr_logo.png")
+- `CLICKIFY_QR_SEGNO_CONFIG`: Optional configuration to pass to SEGNO Make and Save
 
 ### Rate Limiting Configuration
 
@@ -140,6 +144,57 @@ MIDDLEWARE = [
     # ...
 ]
 ```
+
+### QR Code Configuration
+
+To enable a QR Code displayed in the Django Admin Change Screen, install the `sengo` package and add the `CLICKIFY_QR_BASE_URI` setting.
+
+```bash
+pip install segno
+```
+
+```python
+# settings.py
+CLICKIFY_QR_BASE_URI = "https://yourdomain.com/c/{slug}"
+```
+
+To add a logo to the center of the generated QR Code, install Pillow and add the `CLICKIFY_QR_LOGO_PATH` setting.
+
+```python
+# settings.py
+CLICKIFY_QR_LOGO_PATH = "img/my-logo.png"   # path within STATICFILES_DIRS or app static folders
+```
+
+The default implementation uses the Segno QR Generation library. You can override the kwargs passed to make and save.
+
+```python
+# settings.py
+CLICKIFY_QR_SEGNO_CONFIG = {
+    "MAKE_KWARGS":
+        {
+            "error": "h"
+        },
+    "SAVE_KWARGS":
+        {
+            "kind": "png",
+            "scale": 40,
+            "border": 1
+        }
+}
+```
+
+To override QR Generation and return your own HTML.
+
+```python
+CLICKIFY_QR_GENERATOR = "myapp.qr.custom_qr_generator"
+```
+
+```python
+def custom_qr_generator(link):
+    url = f"https://example.com/c/{link.slug}"
+    return f"<img src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={url}' />"
+```
+
 
 ## Usage
 
