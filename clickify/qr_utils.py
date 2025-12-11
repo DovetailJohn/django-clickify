@@ -177,9 +177,38 @@ def segno_qr_generator(tracked_link: TrackedLink) -> str:
     b64 = base64.b64encode(png_bytes).decode("ascii")
     qr_image = f"data:image/png;base64,{b64}"
     return format_html(
-        '<img src="{}" alt="QR code for \'{}\'" style="max-width: 200px; height: auto;" />',
-        qr_image,
-        url,
+        """
+        <div id="copy-url" style="cursor: pointer; padding: 4px; background: #f7f7f7; border: 1px solid #ddd; display: inline-block;">
+            {url}
+        </div>
+
+        <script>
+        (function() {{
+            const div = document.getElementById("copy-url");
+            if (div) {{
+                div.addEventListener("click", function() {{
+                    navigator.clipboard.writeText(div.textContent.trim()).then(function() {{
+                        div.style.backgroundColor = "#dff0d8";  // light green success indicator
+                        setTimeout(() => {{
+                            div.style.backgroundColor = "#f7f7f7";
+                        }}, 800);
+                    }});
+                }});
+            }}
+        }})();
+        </script>
+
+        <div style="margin-top: 8px;">
+            <img src="{qr_image}" alt="QR code for '{url}'" style="max-width: 200px; height: auto;" />
+        </div>
+
+        <div style="margin-top: 6px;">
+            <a href="{qr_image}" download="{slug}-qr.png">Download QR code</a>
+        </div>
+        """,
+        url=url,
+        qr_image=qr_image,
+        slug=tracked_link.slug,
     )
 
 def get_qr_code_html(tracked_link: TrackedLink):
