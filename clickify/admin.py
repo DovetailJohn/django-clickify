@@ -49,10 +49,35 @@ class ClickLogAdmin(admin.ModelAdmin):
     list_filter = ("target", "country", "timestamp")
     readonly_fields = [field.name for field in ClickLog._meta.fields]
 
-    def has_add_permission(self, request):
-        """Prevent adding new ClickLogs from the admin."""
-        return False
+    actions = ["update_geolocation"]
 
-    def has_delete_permission(self, request, obj=...):
-        """Prevent deleting ClickLogs from the admin."""
-        return False
+    def update_geolocation(self, request, queryset):
+        """
+        Admin action to update geolocation (country, city) for selected ClickLogs.
+        """
+        updated = 0
+
+        for log in queryset:
+            if log.ip_address:
+                try:
+                    country, city = get_geolocation(log.ip_address)
+                    log.country = country
+                    log.city = city
+                    log.save(update_fields=["country", "city"])
+                    updated += 1
+                except Exception as exc:
+                    # If one entry fails, keep going
+                    self.message_user(
+                        request,
+                        f"Error updating IP {log.ip_address}: {exc}",
+                        level=messages.WARNING,
+                    )
+
+        self.message_user(
+            request,
+            f"Updated geolocation for {updated} log(s).",
+            level=messages.SUCCESS,
+        )
+
+    update_geolocation.short_description = "Update geolocation for selected logs"
+
