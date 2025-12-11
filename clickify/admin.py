@@ -4,6 +4,8 @@ from django.utils.html import format_html
 from .models import ClickLog, TrackedLink
 
 from .qr_utils import is_qr_enabled, get_qr_code_html
+from .utils import get_geolocation
+
 
 @admin.register(TrackedLink)
 class TrackedLinkAdmin(admin.ModelAdmin):
