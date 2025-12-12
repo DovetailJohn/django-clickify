@@ -178,13 +178,13 @@ def segno_qr_generator(tracked_link: TrackedLink) -> str:
     qr_image = f"data:image/png;base64,{b64}"
     return format_html(
         """
-        <div id="copy-url" style="cursor: pointer; padding: 4px; background: #f7f7f7; border: 1px solid #ddd; display: inline-block;">
+        <div id="copy-tracked-link-url" style="cursor: pointer; padding: 4px; background: #f7f7f7; border: 1px solid #ddd; display: inline-block;">
             {url}
         </div>
 
         <script>
         (function() {{
-            const div = document.getElementById("copy-url");
+            const div = document.getElementById("copy-tracked-link-url");
             if (div) {{
                 div.addEventListener("click", function() {{
                     navigator.clipboard.writeText(div.textContent.trim()).then(function() {{

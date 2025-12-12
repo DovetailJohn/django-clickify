@@ -80,10 +80,10 @@ def get_geoip(ip):
         return {}
 
 
-def get_geolocation(ip_address):
+def get_geolocation(ip_address, force=False):
     """Get country and city for a given IP address"""
     # Geolocation can be disabled globally in settings
-    if not getattr(settings, "CLICKIFY_GEOLOCATION", True) or not ip_address:
+    if (not force and not getattr(settings, "CLICKIFY_GEOLOCATION", True)) or not ip_address:
         return None, None
 
     data = get_geoip(ip_address)

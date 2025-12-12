@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html
 
 from .models import ClickLog, TrackedLink
@@ -49,7 +49,7 @@ class ClickLogAdmin(admin.ModelAdmin):
     list_display = ("target", "ip_address", "country", "city", "timestamp")
     search_fields = ("target__name", "ip_address", "country", "city")
     list_filter = ("target", "country", "timestamp")
-    readonly_fields = [field.name for field in ClickLog._meta.fields]
+    #readonly_fields = [field.name for field in ClickLog._meta.fields]
 
     actions = ["update_geolocation"]
 
@@ -62,7 +62,7 @@ class ClickLogAdmin(admin.ModelAdmin):
         for log in queryset:
             if log.ip_address:
                 try:
-                    country, city = get_geolocation(log.ip_address)
+                    country, city = get_geolocation(log.ip_address, force=True)
                     log.country = country
                     log.city = city
                     log.save(update_fields=["country", "city"])
@@ -82,4 +82,3 @@ class ClickLogAdmin(admin.ModelAdmin):
         )
 
     update_geolocation.short_description = "Update geolocation for selected logs"
-
