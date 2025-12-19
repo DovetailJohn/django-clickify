@@ -49,9 +49,13 @@ class ClickLogAdmin(admin.ModelAdmin):
     list_display = ("target", "ip_address", "country", "city", "timestamp")
     search_fields = ("target__name", "ip_address", "country", "city")
     list_filter = ("target", "country", "timestamp")
-    #readonly_fields = [field.name for field in ClickLog._meta.fields]
+    readonly_fields = [field.name for field in ClickLog._meta.fields]
 
     actions = ["update_geolocation"]
+
+    def has_add_permission(self, request):
+        """Prevent adding new ClickLogs from the admin."""
+        return False
 
     def update_geolocation(self, request, queryset):
         """
