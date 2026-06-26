@@ -1,10 +1,11 @@
 from unittest.mock import patch, MagicMock
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase, RequestFactory
 from django.urls import reverse
 from django.core.cache import cache
 
-from clickify.models import TrackedLink, UtmSource, UtmMedium, ClickLog
+from clickify.models import TrackedLink, UtmSource, UtmMedium, ClickLog, validate_forward_params
 from clickify.utils import build_redirect_url
 
 
@@ -261,3 +262,62 @@ class UtmClickLogIntegrationTest(TestCase):
         log = ClickLog.objects.get(target=bare_link)
         self.assertIsNone(log.utm_source)
         self.assertIsNone(log.utm_campaign)
+
+
+class ValidateForwardParamsTest(TestCase):
+
+    def _ok(self, value):
+        """Assert value passes validation."""
+        try:
+            validate_forward_params(value)
+        except ValidationError as e:
+            self.fail(f"Unexpected ValidationError for {value!r}: {e}")
+
+    def _bad(self, value):
+        """Assert value raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            validate_forward_params(value)
+
+    # --- valid inputs ---
+
+    def test_blank_is_valid(self):
+        self._ok("")
+
+    def test_single_name(self):
+        self._ok("name")
+
+    def test_multiple_names(self):
+        self._ok("name, ref_id, campaign_token")
+
+    def test_names_with_hyphens_underscores_dots(self):
+        self._ok("ref-id, track.id, campaign_token")
+
+    def test_trailing_comma_ignored(self):
+        self._ok("name,")
+
+    def test_extra_spaces_around_commas(self):
+        self._ok("  name ,  ref_id  ")
+
+    # --- invalid inputs ---
+
+    def test_key_value_pair_rejected(self):
+        self._bad("name=John")
+
+    def test_utm_prefix_rejected(self):
+        self._bad("utm_source")
+
+    def test_utm_prefix_case_insensitive(self):
+        self._bad("UTM_SOURCE")
+
+    def test_spaces_within_token_rejected(self):
+        self._bad("my param")
+
+    def test_special_characters_rejected(self):
+        self._bad("name[]")
+
+    def test_mixed_valid_and_invalid_all_reported(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_forward_params("name, utm_source, ref_id=1")
+        messages = " ".join(str(m) for m in ctx.exception.messages)
+        self.assertIn("utm_source", messages)
+        self.assertIn("ref_id=1", messages)

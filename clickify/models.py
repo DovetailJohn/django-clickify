@@ -1,6 +1,32 @@
+import re
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
+
+_PARAM_NAME_RE = re.compile(r"^[A-Za-z0-9_\-\.]+$")
+
+
+def validate_forward_params(value):
+    """Validate a comma-separated list of query parameter names.
+
+    Each token must be a bare param name: no '=', no spaces, no 'utm_' prefix.
+    """
+    if not value:
+        return
+    errors = []
+    for raw in value.split(","):
+        token = raw.strip()
+        if not token:
+            continue
+        if "=" in token:
+            errors.append(f"'{token}': use a parameter name only, not 'name=value'.")
+        elif token.lower().startswith("utm_"):
+            errors.append(f"'{token}': UTM parameters are managed via the UTM fields above.")
+        elif not _PARAM_NAME_RE.match(token):
+            errors.append(f"'{token}': only letters, numbers, hyphens, underscores and dots are allowed.")
+    if errors:
+        raise ValidationError(errors)
 
 
 class UtmSource(models.Model):
@@ -133,6 +159,7 @@ class TrackedLink(models.Model):
     )
     forward_params = models.CharField(
         max_length=1024, blank=True,
+        validators=[validate_forward_params],
         help_text=(
             "Comma-separated list of non-UTM query parameter names to forward from "
             "the visitor's click URL to the destination. "
