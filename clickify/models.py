@@ -27,6 +27,8 @@ class UtmSource(models.Model):
 
     class Meta:
         ordering = ["value"]
+        verbose_name = "UTM Source"
+        verbose_name_plural = "UTM Sources"
 
 
 class UtmMedium(models.Model):
@@ -53,6 +55,8 @@ class UtmMedium(models.Model):
 
     class Meta:
         ordering = ["value"]
+        verbose_name = "UTM Medium"
+        verbose_name_plural = "UTM Mediums"
 
 
 class TrackedLink(models.Model):

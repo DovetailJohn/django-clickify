@@ -81,8 +81,7 @@ class ClickLogAdmin(admin.ModelAdmin):
                     "utm_source", "utm_campaign", "timestamp")
     search_fields = ("target__name", "ip_address", "country", "city",
                      "utm_source", "utm_medium", "utm_campaign", "utm_content")
-    list_filter = ("target", "country", "utm_source", "utm_medium",
-                   "utm_campaign", "timestamp")
+    list_filter = ("target", "country", "timestamp")
     readonly_fields = [field.name for field in ClickLog._meta.fields]
 
     actions = ["update_geolocation"]
