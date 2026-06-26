@@ -36,29 +36,29 @@ class BuildRedirectUrlTest(TestCase):
 
     def test_no_utm_returns_target_url_unchanged(self):
         link = self._make_link()
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertEqual(result, "https://dest.example.com/page")
 
     def test_no_target_url_returns_slash(self):
         link = self._make_link(target_url=None)
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertEqual(result, "/")
 
     def test_empty_target_url_returns_slash(self):
         link = self._make_link(target_url="")
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertEqual(result, "/")
 
     # --- pass-through (no stored UTM, visitor brings params) ---
 
     def test_incoming_utm_forwarded_when_no_stored_utm(self):
         link = self._make_link()
-        result = build_redirect_url(link, self._req({"utm_source": "social"}))
+        result, _ = build_redirect_url(link, self._req({"utm_source": "social"}))
         self.assertIn("utm_source=social", result)
 
     def test_multiple_incoming_utm_all_forwarded(self):
         link = self._make_link()
-        result = build_redirect_url(
+        result, _ = build_redirect_url(
             link, self._req({"utm_source": "social", "utm_campaign": "winter"})
         )
         self.assertIn("utm_source=social", result)
@@ -69,7 +69,7 @@ class BuildRedirectUrlTest(TestCase):
     def test_stored_source_appended(self):
         source = MagicMock(spec=UtmSource, value="email")
         link = self._make_link(utm_source_id=1, utm_source=source)
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertIn("utm_source=email", result)
 
     def test_stored_source_medium_campaign_all_appended(self):
@@ -80,7 +80,7 @@ class BuildRedirectUrlTest(TestCase):
             utm_medium_id=1, utm_medium=medium,
             utm_campaign="q3-launch",
         )
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertIn("utm_source=email", result)
         self.assertIn("utm_medium=email", result)
         self.assertIn("utm_campaign=q3-launch", result)
@@ -92,7 +92,7 @@ class BuildRedirectUrlTest(TestCase):
             utm_content="header-cta",
             utm_term="running+shoes",
         )
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertIn("utm_content=header-cta", result)
         self.assertIn("utm_term=running%2Bshoes", result)
 
@@ -101,7 +101,7 @@ class BuildRedirectUrlTest(TestCase):
     def test_preserve_mode_incoming_source_wins_over_stored(self):
         source = MagicMock(spec=UtmSource, value="email")
         link = self._make_link(utm_source_id=1, utm_source=source, utm_override=False)
-        result = build_redirect_url(link, self._req({"utm_source": "social"}))
+        result, _ = build_redirect_url(link, self._req({"utm_source": "social"}))
         self.assertIn("utm_source=social", result)
         self.assertNotIn("utm_source=email", result)
 
@@ -112,7 +112,7 @@ class BuildRedirectUrlTest(TestCase):
             utm_campaign="q3",
             utm_override=False,
         )
-        result = build_redirect_url(
+        result, _ = build_redirect_url(
             link, self._req({"utm_source": "social"})
         )
         self.assertIn("utm_source=social", result)
@@ -123,7 +123,7 @@ class BuildRedirectUrlTest(TestCase):
     def test_override_mode_stored_source_wins_over_incoming(self):
         source = MagicMock(spec=UtmSource, value="email")
         link = self._make_link(utm_source_id=1, utm_source=source, utm_override=True)
-        result = build_redirect_url(link, self._req({"utm_source": "social"}))
+        result, _ = build_redirect_url(link, self._req({"utm_source": "social"}))
         self.assertIn("utm_source=email", result)
         self.assertNotIn("utm_source=social", result)
 
@@ -134,7 +134,7 @@ class BuildRedirectUrlTest(TestCase):
             utm_campaign="stored-campaign",
             utm_override=True,
         )
-        result = build_redirect_url(
+        result, _ = build_redirect_url(
             link, self._req({"utm_source": "social", "utm_campaign": "incoming-campaign"})
         )
         self.assertIn("utm_source=email", result)
@@ -150,30 +150,30 @@ class BuildRedirectUrlTest(TestCase):
             target_url="https://dest.example.com/page?foo=bar",
             utm_source_id=1, utm_source=source,
         )
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertIn("foo=bar", result)
         self.assertIn("utm_source=email", result)
 
     def test_base_url_params_preserved_with_no_utm(self):
         link = self._make_link(target_url="https://dest.example.com/page?foo=bar")
-        result = build_redirect_url(link, self._req())
+        result, _ = build_redirect_url(link, self._req())
         self.assertEqual(result, "https://dest.example.com/page?foo=bar")
 
     # --- forward_params allowlist ---
 
     def test_allowed_extra_param_forwarded(self):
         link = self._make_link(forward_params="name")
-        result = build_redirect_url(link, self._req({"name": "John"}))
+        result, _ = build_redirect_url(link, self._req({"name": "John"}))
         self.assertIn("name=John", result)
 
     def test_non_allowed_extra_param_dropped(self):
         link = self._make_link(forward_params="")
-        result = build_redirect_url(link, self._req({"name": "John"}))
+        result, _ = build_redirect_url(link, self._req({"name": "John"}))
         self.assertNotIn("name=John", result)
 
     def test_only_allowlisted_params_forwarded(self):
         link = self._make_link(forward_params="name")
-        result = build_redirect_url(
+        result, _ = build_redirect_url(
             link, self._req({"name": "John", "secret": "token"})
         )
         self.assertIn("name=John", result)
@@ -181,7 +181,7 @@ class BuildRedirectUrlTest(TestCase):
 
     def test_forward_params_with_spaces_and_empties_handled(self):
         link = self._make_link(forward_params=" name , , ref_id ")
-        result = build_redirect_url(
+        result, _ = build_redirect_url(
             link, self._req({"name": "John", "ref_id": "42"})
         )
         self.assertIn("name=John", result)
@@ -196,7 +196,7 @@ class BuildRedirectUrlTest(TestCase):
             forward_params="utm_source",  # should be ignored in extra path
             utm_override=True,
         )
-        result = build_redirect_url(link, self._req({"utm_source": "social"}))
+        result, _ = build_redirect_url(link, self._req({"utm_source": "social"}))
         # stored wins in override mode; value is "email" not "social"
         self.assertIn("utm_source=email", result)
         self.assertNotIn("utm_source=social", result)

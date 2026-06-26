@@ -123,7 +123,7 @@ def get_request_param(request, key):
 def build_redirect_url(target, request):
     """Build the final redirect URL, merging stored UTM params with any incoming ones."""
     if not target.target_url:
-        return "/"
+        return "/", {}
 
     parsed = urlparse(target.target_url)
     # Preserve ALL existing query params in target_url (including non-UTM ones,
@@ -159,7 +159,7 @@ def build_redirect_url(target, request):
     if not stored_utm and not incoming_utm and not incoming_extra:
         # Nothing to add; return target_url unchanged so that non-UTM base
         # params (already inside target_url) are not disturbed.
-        return target.target_url
+        return target.target_url, {}
 
     # Only the UTM priority changes between modes — incoming_extra always sits
     # above base_params but below the UTM resolution layer.
@@ -171,7 +171,8 @@ def build_redirect_url(target, request):
         final = {**base_params, **incoming_extra, **stored_utm, **incoming_utm}
 
     # doseq=True handles the list values from parse_qs correctly.
-    return urlunparse(parsed._replace(query=urlencode(final, doseq=True)))
+    utm_dict = {k: v[0] for k, v in final.items() if k.startswith("utm_")}
+    return urlunparse(parsed._replace(query=urlencode(final, doseq=True))), utm_dict
 
 
 def create_click_log(target, request, utm_params=None):
