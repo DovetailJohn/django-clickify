@@ -1,10 +1,22 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .models import ClickLog, TrackedLink
+from .models import ClickLog, TrackedLink, UtmSource, UtmMedium
 
 from .qr_utils import is_qr_enabled, get_qr_code_html
 from .utils import get_geolocation
+
+
+@admin.register(UtmSource)
+class UtmSourceAdmin(admin.ModelAdmin):
+    list_display = ("value", "label")
+    search_fields = ("value", "label")
+
+
+@admin.register(UtmMedium)
+class UtmMediumAdmin(admin.ModelAdmin):
+    list_display = ("value", "label")
+    search_fields = ("value", "label")
 
 
 @admin.register(TrackedLink)
@@ -14,7 +26,26 @@ class TrackedLinkAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "target_url", "created_at")
     search_fields = ("name", "slug", "target_url")
     prepopulated_fields = {"slug": ("name",)}
-    list_filter = ("created_at",)
+    list_filter = ("utm_source", "utm_medium", "created_at")
+    autocomplete_fields = ["utm_source", "utm_medium"]
+
+    fieldsets = (
+        (None, {
+            "fields": ("name", "slug", "target_url"),
+        }),
+        ("UTM Parameters", {
+            "fields": (
+                "utm_source", "utm_medium",
+                "utm_campaign", "utm_content", "utm_term",
+                "utm_override", "forward_params",
+            ),
+            "description": (
+                "All UTM fields are optional. Select a source and medium from the "
+                "managed lists (use + to add a new one). Campaign, content, and term "
+                "are free-text — use lowercase with hyphens, no spaces."
+            ),
+        }),
+    )
 
     def get_readonly_fields(self, request, obj=None):
         """
@@ -46,9 +77,12 @@ class TrackedLinkAdmin(admin.ModelAdmin):
 class ClickLogAdmin(admin.ModelAdmin):
     """Admin view for ClickLog."""
 
-    list_display = ("target", "ip_address", "country", "city", "timestamp")
-    search_fields = ("target__name", "ip_address", "country", "city")
-    list_filter = ("target", "country", "timestamp")
+    list_display = ("target", "ip_address", "country", "city",
+                    "utm_source", "utm_campaign", "timestamp")
+    search_fields = ("target__name", "ip_address", "country", "city",
+                     "utm_source", "utm_medium", "utm_campaign", "utm_content")
+    list_filter = ("target", "country", "utm_source", "utm_medium",
+                   "utm_campaign", "timestamp")
     readonly_fields = [field.name for field in ClickLog._meta.fields]
 
     actions = ["update_geolocation"]
