@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from .decorators import conditional_ratelimit
 from .models import TrackedLink
-from .utils import create_click_log
+from .utils import build_redirect_url, create_click_log
 
 
 @method_decorator(conditional_ratelimit, name="post")
@@ -38,11 +38,9 @@ class TrackClickAPIView(APIView):
     def post(self, request, slug, format=None):
         """Tracks a click for the given slug."""
         target = get_object_or_404(TrackedLink, slug=slug)
-
-        # Use the helper function with the underlying Django request
-        create_click_log(target=target, request=request._request)
-
+        redirect_url, utm_params = build_redirect_url(target, request._request)
+        create_click_log(target=target, request=request._request, utm_params=utm_params)
         return Response(
-            {"message": "Click tracked successfully", "target_url": target.target_url},
+            {"message": "Click tracked successfully", "target_url": redirect_url},
             status=status.HTTP_200_OK,
         )

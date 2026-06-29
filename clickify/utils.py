@@ -1,6 +1,7 @@
 import ipaddress
 import json
 from urllib.error import ContentTooShortError, HTTPError, URLError
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -119,7 +120,62 @@ def get_request_param(request, key):
 # ------------------- Click Log -------------------
 
 
-def create_click_log(target, request):
+def build_redirect_url(target, request):
+    """Build the final redirect URL, merging stored UTM params with any incoming ones."""
+    if not target.target_url:
+        return "/", {}
+
+    parsed = urlparse(target.target_url)
+    # Preserve ALL existing query params in target_url (including non-UTM ones,
+    # multi-value params, and empty-value params). keep_blank_values ensures
+    # params like ?foo= are not silently dropped.
+    base_params = parse_qs(parsed.query, keep_blank_values=True)
+
+    # UTM params the visitor brought in on the click URL.
+    # When present, these are forwarded to the destination (pass-through).
+    # Stored as single-value lists to be compatible with base_params.
+    incoming_utm = {k: [v] for k, v in request.GET.items() if k.startswith("utm_")}
+
+    # Non-UTM params explicitly allowed on this link (comma-separated allowlist).
+    allowed_extra = {p.strip() for p in target.forward_params.split(",") if p.strip()}
+    incoming_extra = {
+        k: [v] for k, v in request.GET.items()
+        if not k.startswith("utm_") and k in allowed_extra
+    }
+
+    # Build stored UTM dict from FK lookups + per-link free-text fields.
+    stored_utm = {}
+    if target.utm_source_id:
+        stored_utm["utm_source"] = [target.utm_source.value]
+    if target.utm_medium_id:
+        stored_utm["utm_medium"] = [target.utm_medium.value]
+    if target.utm_campaign:
+        stored_utm["utm_campaign"] = [target.utm_campaign]
+    if target.utm_content:
+        stored_utm["utm_content"] = [target.utm_content]
+    if target.utm_term:
+        stored_utm["utm_term"] = [target.utm_term]
+
+    if not stored_utm and not incoming_utm and not incoming_extra:
+        # Nothing to add; return target_url unchanged so that non-UTM base
+        # params (already inside target_url) are not disturbed.
+        return target.target_url, {}
+
+    # Only the UTM priority changes between modes — incoming_extra always sits
+    # above base_params but below the UTM resolution layer.
+    if target.utm_override:
+        # Override: stored UTM > incoming UTM > allowed extra > base params
+        final = {**base_params, **incoming_extra, **incoming_utm, **stored_utm}
+    else:
+        # Preserve: incoming UTM > stored UTM > allowed extra > base params
+        final = {**base_params, **incoming_extra, **stored_utm, **incoming_utm}
+
+    # doseq=True handles the list values from parse_qs correctly.
+    utm_dict = {k: v[0] for k, v in final.items() if k.startswith("utm_")}
+    return urlunparse(parsed._replace(query=urlencode(final, doseq=True))), utm_dict
+
+
+def create_click_log(target, request, utm_params=None):
     """Create a ClickLog object.
 
     This contains the core tracking logic that can be reused by both the
@@ -133,6 +189,7 @@ def create_click_log(target, request):
         country, city = get_geolocation(ip)
 
     ref = get_request_param(request, "ref")
+    utm = utm_params or {}
     ClickLog.objects.create(
         target=target,
         ip_address=ip,
@@ -140,4 +197,9 @@ def create_click_log(target, request):
         country=country,
         city=city,
         ref=ref,
+        utm_source=utm.get("utm_source"),
+        utm_medium=utm.get("utm_medium"),
+        utm_campaign=utm.get("utm_campaign"),
+        utm_content=utm.get("utm_content"),
+        utm_term=utm.get("utm_term"),
     )

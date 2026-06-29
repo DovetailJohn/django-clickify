@@ -1,10 +1,25 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .models import ClickLog, TrackedLink
-
-from .qr_utils import is_qr_enabled, get_qr_code_html
+from .models import ClickLog, TrackedLink, UtmMedium, UtmSource
+from .qr_utils import get_qr_code_html, is_qr_enabled
 from .utils import get_geolocation
+
+
+@admin.register(UtmSource)
+class UtmSourceAdmin(admin.ModelAdmin):
+    """Admin for the UTM source lookup table."""
+
+    list_display = ("value", "label")
+    search_fields = ("value", "label")
+
+
+@admin.register(UtmMedium)
+class UtmMediumAdmin(admin.ModelAdmin):
+    """Admin for the UTM medium lookup table."""
+
+    list_display = ("value", "label")
+    search_fields = ("value", "label")
 
 
 @admin.register(TrackedLink)
@@ -14,12 +29,29 @@ class TrackedLinkAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "target_url", "created_at")
     search_fields = ("name", "slug", "target_url")
     prepopulated_fields = {"slug": ("name",)}
-    list_filter = ("created_at",)
+    list_filter = ("utm_source", "utm_medium", "created_at")
+    autocomplete_fields = ["utm_source", "utm_medium"]
+
+    fieldsets = (
+        (None, {
+            "fields": ("name", "slug", "target_url"),
+        }),
+        ("UTM Parameters", {
+            "fields": (
+                "utm_source", "utm_medium",
+                "utm_campaign", "utm_content", "utm_term",
+                "utm_override", "forward_params",
+            ),
+            "description": (
+                "All UTM fields are optional. Select a source and medium from the "
+                "managed lists (use + to add a new one). Campaign, content, and term "
+                "are free-text — use lowercase with hyphens, no spaces."
+            ),
+        }),
+    )
 
     def get_readonly_fields(self, request, obj=None):
-        """
-        Add qr_preview as readonly, but only on the change view (obj != None).
-        """
+        """Add qr_preview as readonly, but only on the change view (obj != None)."""
         ro = list(super().get_readonly_fields(request, obj))
 
         if is_qr_enabled() and obj is not None:
@@ -28,9 +60,7 @@ class TrackedLinkAdmin(admin.ModelAdmin):
 
     @admin.display(description="QR Code")
     def qr_preview(self, obj):
-        """
-        Render an <img> tag using the configured QR Generation function.
-        """
+        """Render an <img> tag using the configured QR Generation function."""
         try:
 
             if not obj:
@@ -46,8 +76,10 @@ class TrackedLinkAdmin(admin.ModelAdmin):
 class ClickLogAdmin(admin.ModelAdmin):
     """Admin view for ClickLog."""
 
-    list_display = ("target", "ip_address", "country", "city", "timestamp")
-    search_fields = ("target__name", "ip_address", "country", "city")
+    list_display = ("target", "ip_address", "country", "city",
+                    "utm_source", "utm_campaign", "timestamp")
+    search_fields = ("target__name", "ip_address", "country", "city",
+                     "utm_source", "utm_medium", "utm_campaign", "utm_content")
     list_filter = ("target", "country", "timestamp")
     readonly_fields = [field.name for field in ClickLog._meta.fields]
 
@@ -58,9 +90,7 @@ class ClickLogAdmin(admin.ModelAdmin):
         return False
 
     def update_geolocation(self, request, queryset):
-        """
-        Admin action to update geolocation (country, city) for selected ClickLogs.
-        """
+        """Admin action to update geolocation (country, city) for selected ClickLogs."""
         updated = 0
 
         for log in queryset:
