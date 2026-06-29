@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 
 from .decorators import conditional_ratelimit
 from .models import TrackedLink
-from .utils import create_click_log, build_redirect_url
+from .utils import build_redirect_url, create_click_log
 
 
 @conditional_ratelimit

@@ -1,19 +1,18 @@
 # QR Utility Functions
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, BinaryIO
 
-import io
 import base64
-from functools import lru_cache
+import io
 from copy import deepcopy
+from functools import lru_cache
+from typing import TYPE_CHECKING, BinaryIO
 
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.core.exceptions import ImproperlyConfigured
-from django.utils.module_loading import import_string
 from django.utils.html import format_html
-
+from django.utils.module_loading import import_string
 
 if TYPE_CHECKING:
     from .models import TrackedLink
@@ -27,9 +26,11 @@ DEFAULT_SEGNO_CONFIG = {
 SEGNO_CONFIG_KEYS = {"MAKE_KWARGS", "SAVE_KWARGS"}
 
 def is_qr_enabled() -> bool:
+    """Return True if QR code generation is configured."""
     return bool(getattr(settings, "CLICKIFY_QR_BASE_URI", ""))
 
 def get_qr_url(obj: TrackedLink) -> str:
+    """Build the public-facing tracking URL for a TrackedLink."""
     base = getattr(settings, "CLICKIFY_QR_BASE_URI", "")
     if not base:
         return ""
@@ -43,9 +44,7 @@ def get_qr_url(obj: TrackedLink) -> str:
     return url
 
 def get_qr_code_generator():
-    """
-    Returns a callable implementing the QR generation API.
-    """
+    """Return a callable implementing the QR generation API."""
     path_or_callable = getattr(settings, "CLICKIFY_QR_GENERATOR", "clickify.qr_utils.segno_qr_generator")
 
     if callable(path_or_callable):
@@ -56,6 +55,7 @@ def get_qr_code_generator():
 
 @lru_cache(maxsize=1)
 def get_segno_config():
+    """Load and merge CLICKIFY_QR_SEGNO_CONFIG with defaults."""
     user_config = getattr(settings, "CLICKIFY_QR_SEGNO_CONFIG", {})
 
     merged = deepcopy(DEFAULT_SEGNO_CONFIG)
@@ -77,6 +77,7 @@ def get_segno_config():
     return merged
 
 def insert_image(qr_buffer: BinaryIO, logo_path: str) -> bytes:
+    """Embed a logo image into the center of a QR code PNG buffer."""
     try:
         from PIL import Image
     except ImportError as ex:
@@ -118,8 +119,8 @@ def insert_image(qr_buffer: BinaryIO, logo_path: str) -> bytes:
 
 
 def segno_qr_image(url: str) -> bytes:
-    """
-    Generate a QR code PNG for the given URL using segno.
+    """Generate a QR code PNG for the given URL using segno.
+
     Optionally embed a logo image at the center (if CLICKIFY_QR_LOGO_PATH is in settings).
 
     Returns raw PNG bytes.
@@ -163,8 +164,7 @@ def segno_qr_image(url: str) -> bytes:
 
 
 def segno_qr_generator(tracked_link: TrackedLink) -> str:
-    """
-    Returns the html string with the img tag for displaying a segno generated QR Code
+    """Returns the html string with the img tag for displaying a segno generated QR Code
 
     :param tracked_link: Description
     :type tracked_link: TrackedLink
@@ -212,10 +212,8 @@ def segno_qr_generator(tracked_link: TrackedLink) -> str:
     )
 
 def get_qr_code_html(tracked_link: TrackedLink):
-    """
-    Convenience wrapper around the configured CLICKIFY_QR_GENERATOR.
+    """Convenience wrapper around the configured CLICKIFY_QR_GENERATOR.
 
     Returns whatever the generator returns (by default, an <img> tag with a data URI src).
     """
-
     return get_qr_code_generator()(tracked_link)

@@ -1,11 +1,17 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from django.core.exceptions import ValidationError
-from django.test import TestCase, RequestFactory
-from django.urls import reverse
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
-from clickify.models import TrackedLink, UtmSource, UtmMedium, ClickLog, validate_forward_params
+from clickify.models import (
+    ClickLog,
+    TrackedLink,
+    UtmMedium,
+    UtmSource,
+    validate_forward_params,
+)
 from clickify.utils import build_redirect_url
 
 

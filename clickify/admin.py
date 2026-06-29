@@ -1,20 +1,23 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .models import ClickLog, TrackedLink, UtmSource, UtmMedium
-
-from .qr_utils import is_qr_enabled, get_qr_code_html
+from .models import ClickLog, TrackedLink, UtmMedium, UtmSource
+from .qr_utils import get_qr_code_html, is_qr_enabled
 from .utils import get_geolocation
 
 
 @admin.register(UtmSource)
 class UtmSourceAdmin(admin.ModelAdmin):
+    """Admin for the UTM source lookup table."""
+
     list_display = ("value", "label")
     search_fields = ("value", "label")
 
 
 @admin.register(UtmMedium)
 class UtmMediumAdmin(admin.ModelAdmin):
+    """Admin for the UTM medium lookup table."""
+
     list_display = ("value", "label")
     search_fields = ("value", "label")
 
@@ -48,9 +51,7 @@ class TrackedLinkAdmin(admin.ModelAdmin):
     )
 
     def get_readonly_fields(self, request, obj=None):
-        """
-        Add qr_preview as readonly, but only on the change view (obj != None).
-        """
+        """Add qr_preview as readonly, but only on the change view (obj != None)."""
         ro = list(super().get_readonly_fields(request, obj))
 
         if is_qr_enabled() and obj is not None:
@@ -59,9 +60,7 @@ class TrackedLinkAdmin(admin.ModelAdmin):
 
     @admin.display(description="QR Code")
     def qr_preview(self, obj):
-        """
-        Render an <img> tag using the configured QR Generation function.
-        """
+        """Render an <img> tag using the configured QR Generation function."""
         try:
 
             if not obj:
@@ -91,9 +90,7 @@ class ClickLogAdmin(admin.ModelAdmin):
         return False
 
     def update_geolocation(self, request, queryset):
-        """
-        Admin action to update geolocation (country, city) for selected ClickLogs.
-        """
+        """Admin action to update geolocation (country, city) for selected ClickLogs."""
         updated = 0
 
         for log in queryset:

@@ -52,6 +52,8 @@ class UtmSource(models.Model):
         return f"{self.value} — {self.label}" if self.label else self.value
 
     class Meta:
+        """Model metadata for UtmSource."""
+
         ordering = ["value"]
         verbose_name = "UTM Source"
         verbose_name_plural = "UTM Sources"
@@ -80,6 +82,8 @@ class UtmMedium(models.Model):
         return f"{self.value} — {self.label}" if self.label else self.value
 
     class Meta:
+        """Model metadata for UtmMedium."""
+
         ordering = ["value"]
         verbose_name = "UTM Medium"
         verbose_name_plural = "UTM Mediums"

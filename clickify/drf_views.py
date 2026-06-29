@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from .decorators import conditional_ratelimit
 from .models import TrackedLink
-from .utils import create_click_log, build_redirect_url
+from .utils import build_redirect_url, create_click_log
 
 
 @method_decorator(conditional_ratelimit, name="post")

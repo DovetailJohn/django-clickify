@@ -1,7 +1,7 @@
 import ipaddress
 import json
 from urllib.error import ContentTooShortError, HTTPError, URLError
-from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
