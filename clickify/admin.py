@@ -53,10 +53,16 @@ class TrackedLinkAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         """Add qr_preview as readonly, but only on the change view (obj != None)."""
         ro = list(super().get_readonly_fields(request, obj))
-
         if is_qr_enabled() and obj is not None:
             ro.append("qr_preview")
         return ro
+
+    def get_fieldsets(self, request, obj=None):
+        """Append QR Code fieldset on the change view when QR is configured."""
+        fieldsets = list(super().get_fieldsets(request, obj))
+        if is_qr_enabled() and obj is not None:
+            fieldsets.append(("QR Code", {"fields": ("qr_preview",)}))
+        return fieldsets
 
     @admin.display(description="QR Code")
     def qr_preview(self, obj):
