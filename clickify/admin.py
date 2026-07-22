@@ -1,7 +1,12 @@
+import datetime
+
 from django.contrib import admin, messages
+from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
+from django.template.response import TemplateResponse
 from django.utils.html import format_html
 
-from .models import ClickLog, TrackedLink, UtmMedium, UtmSource
+from .models import ClickLog, ClickReport, TrackedLink, UtmMedium, UtmSource
 from .qr_utils import get_qr_code_html, is_qr_enabled
 from .utils import get_geolocation
 
@@ -122,3 +127,151 @@ class ClickLogAdmin(admin.ModelAdmin):
         )
 
     update_geolocation.short_description = "Update geolocation for selected logs"
+
+
+@admin.register(ClickReport)
+class ClickReportAdmin(admin.ModelAdmin):
+    """Admin dashboard showing aggregated click report data."""
+
+    MAX_ROWS = 20
+
+    def has_add_permission(self, request):
+        """Reports are read-only — no adding."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Reports are read-only — no editing."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Reports are read-only — no deleting."""
+        return False
+
+    ALLOWED_FILTERS = {
+        "utm_source": "UTM Source",
+        "utm_medium": "UTM Medium",
+        "utm_campaign": "Campaign",
+        "target__slug": "Tracked Link",
+        "country": "Country",
+    }
+
+    def _parse_filters(self, request):
+        """Extract active filters from GET params and build query string helpers."""
+        active = []
+        for key, label in self.ALLOWED_FILTERS.items():
+            value = request.GET.get(key)
+            if value:
+                active.append({"key": key, "label": label, "value": value})
+        return active
+
+    def _build_query_string(self, start, end, active_filters, add=None, remove=None):
+        """Build a query string preserving date range and all active filters.
+
+        add: tuple (key, value) to include in the new query string
+        remove: key to exclude from the new query string
+        """
+        from urllib.parse import urlencode
+
+        params = {"start": start, "end": end}
+        for f in active_filters:
+            if remove and f["key"] == remove:
+                continue
+            params[f["key"]] = f["value"]
+        if add:
+            params[add[0]] = add[1]
+        return urlencode(params)
+
+    def changelist_view(self, request, extra_context=None):
+        """Render the click report dashboard instead of the default changelist."""
+        today = datetime.date.today()
+        default_start = today - datetime.timedelta(days=30)
+
+        start_str = request.GET.get("start", default_start.isoformat())
+        end_str = request.GET.get("end", today.isoformat())
+
+        try:
+            start_date = datetime.date.fromisoformat(start_str)
+        except ValueError:
+            start_date = default_start
+
+        try:
+            end_date = datetime.date.fromisoformat(end_str)
+        except ValueError:
+            end_date = today
+
+        qs = ClickLog.objects.filter(
+            timestamp__date__gte=start_date,
+            timestamp__date__lte=end_date,
+        )
+
+        active_filters = self._parse_filters(request)
+        for f in active_filters:
+            if f["value"] == "(not set)":
+                qs = qs.filter(
+                    Q(**{f["key"]: None}) | Q(**{f["key"]: ""})
+                )
+            else:
+                qs = qs.filter(**{f["key"]: f["value"]})
+
+        total = qs.count()
+
+        def _breakdown(qs, *fields):
+            rows = list(
+                qs.values(*fields)
+                .annotate(count=Count("id"))
+                .order_by("-count")
+            )
+            for row in rows:
+                for f in fields:
+                    if not row[f]:
+                        row[f] = "(not set)"
+                row["pct"] = round(row["count"] / total * 100, 1) if total else 0
+            truncated = len(rows) - self.MAX_ROWS if len(rows) > self.MAX_ROWS else 0
+            return rows[: self.MAX_ROWS], truncated
+
+        by_source, source_extra = _breakdown(qs, "utm_source")
+        by_medium, medium_extra = _breakdown(qs, "utm_medium")
+        by_campaign, campaign_extra = _breakdown(qs, "utm_campaign")
+        by_link, link_extra = _breakdown(qs, "target__name", "target__slug")
+        by_country, country_extra = _breakdown(qs, "country")
+
+        by_date = list(
+            qs.values(date=TruncDate("timestamp"))
+            .annotate(count=Count("id"))
+            .order_by("date")
+        )
+
+        base_qs = self._build_query_string(start_str, end_str, active_filters)
+        clear_qs = self._build_query_string(start_str, end_str, [])
+        for f in active_filters:
+            f["remove_qs"] = self._build_query_string(
+                start_str, end_str, active_filters, remove=f["key"],
+            )
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Click Reports",
+            "opts": self.model._meta,
+            "start_date": start_str,
+            "end_date": end_str,
+            "total_clicks": total,
+            "by_source": by_source,
+            "source_extra": source_extra,
+            "by_medium": by_medium,
+            "medium_extra": medium_extra,
+            "by_campaign": by_campaign,
+            "campaign_extra": campaign_extra,
+            "by_link": by_link,
+            "link_extra": link_extra,
+            "by_date": by_date,
+            "by_country": by_country,
+            "country_extra": country_extra,
+            "active_filters": active_filters,
+            "base_qs": base_qs,
+            "clear_qs": clear_qs,
+        }
+        return TemplateResponse(
+            request,
+            "admin/clickify/clickreport/change_list.html",
+            context,
+        )

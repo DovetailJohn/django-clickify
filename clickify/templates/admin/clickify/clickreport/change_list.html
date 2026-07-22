@@ -1,0 +1,196 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .report-table th { padding: 8px; text-align: left; background: var(--header-bg, #f8f8f8); border-bottom: 2px solid var(--hairline-color, #ddd); }
+  .report-table td { padding: 8px; border-bottom: 1px solid var(--hairline-color, #ddd); overflow: hidden; text-overflow: ellipsis; }
+  .report-table tr:hover td { background: var(--darkened-bg, #f5f5f5); }
+  .report-table .num { text-align: right; width: 100px; }
+  .report-table a { text-decoration: none; color: var(--link-fg, #417690); }
+  .report-table a:hover { text-decoration: underline; }
+  .filter-banner { padding: 10px; background: var(--message-success-bg, #dfd); border: 1px solid var(--hairline-color, #ddd); margin-bottom: 0; }
+  .filter-tag { display: inline-block; padding: 3px 8px; margin: 0 4px; background: var(--header-bg, #f8f8f8); border: 1px solid var(--hairline-color, #ccc); border-radius: 3px; }
+  .filter-tag a { color: var(--link-fg, #417690); text-decoration: none; margin-left: 4px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; {{ title }}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+  {# ── Date range filter ── #}
+  <fieldset class="module aligned">
+    <h2>Date Range</h2>
+    <form method="get" style="padding: 10px;">
+      <label for="id_start">Start:</label>
+      <input type="date" name="start" id="id_start" value="{{ start_date }}">
+      <label for="id_end" style="margin-left: 10px;">End:</label>
+      <input type="date" name="end" id="id_end" value="{{ end_date }}">
+      {% for f in active_filters %}
+        <input type="hidden" name="{{ f.key }}" value="{{ f.value }}">
+      {% endfor %}
+      <input type="submit" value="Filter" class="default" style="margin-left: 10px;">
+    </form>
+  </fieldset>
+
+  {# ── Active filters banner ── #}
+  {% if active_filters %}
+  <fieldset class="module aligned">
+    <div class="filter-banner">
+      <strong>Filtered by:</strong>
+      {% for f in active_filters %}
+        <span class="filter-tag">
+          {{ f.label }}: {{ f.value }}
+          <a href="?{{ f.remove_qs }}" title="Remove this filter">&times;</a>
+        </span>
+      {% endfor %}
+      &nbsp; <a href="?{{ clear_qs }}">Clear all</a>
+    </div>
+  </fieldset>
+  {% endif %}
+
+  {% if total_clicks == 0 %}
+    <fieldset class="module aligned">
+      <p style="padding: 10px;">No clicks recorded in this date range.</p>
+    </fieldset>
+  {% else %}
+
+  {# ── Headline ── #}
+  <fieldset class="module aligned">
+    <h2>Total Clicks</h2>
+    <p style="padding: 10px; font-size: 1.5em; font-weight: bold;">
+      {{ total_clicks|floatformat:0 }}
+    </p>
+  </fieldset>
+
+  {# ── By UTM Source ── #}
+  <fieldset class="module">
+    <h2>By UTM Source</h2>
+    <table class="report-table">
+      <thead><tr><th>Source</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
+      <tbody>
+        {% for row in by_source %}
+        <tr>
+          <td><a href="?{{ base_qs }}&utm_source={{ row.utm_source|urlencode }}">{{ row.utm_source }}</a></td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if source_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ source_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By UTM Medium ── #}
+  <fieldset class="module">
+    <h2>By UTM Medium</h2>
+    <table class="report-table">
+      <thead><tr><th>Medium</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
+      <tbody>
+        {% for row in by_medium %}
+        <tr>
+          <td><a href="?{{ base_qs }}&utm_medium={{ row.utm_medium|urlencode }}">{{ row.utm_medium }}</a></td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if medium_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ medium_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By Campaign ── #}
+  <fieldset class="module">
+    <h2>By Campaign</h2>
+    <table class="report-table">
+      <thead><tr><th>Campaign</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
+      <tbody>
+        {% for row in by_campaign %}
+        <tr>
+          <td><a href="?{{ base_qs }}&utm_campaign={{ row.utm_campaign|urlencode }}">{{ row.utm_campaign }}</a></td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if campaign_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ campaign_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By Tracked Link ── #}
+  <fieldset class="module">
+    <h2>By Tracked Link</h2>
+    <table class="report-table">
+      <thead><tr><th>Link Name</th><th>Slug</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
+      <tbody>
+        {% for row in by_link %}
+        <tr>
+          <td>{{ row.target__name }}</td>
+          <td><a href="?{{ base_qs }}&target__slug={{ row.target__slug|urlencode }}">{{ row.target__slug }}</a></td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if link_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ link_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By Country ── #}
+  <fieldset class="module">
+    <h2>By Country</h2>
+    <table class="report-table">
+      <thead><tr><th>Country</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
+      <tbody>
+        {% for row in by_country %}
+        <tr>
+          <td><a href="?{{ base_qs }}&country={{ row.country|urlencode }}">{{ row.country }}</a></td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if country_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ country_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── Over Time ── #}
+  <fieldset class="module">
+    <h2>Over Time (Daily)</h2>
+    <table class="report-table">
+      <thead><tr><th>Date</th><th class="num">Clicks</th></tr></thead>
+      <tbody>
+        {% for row in by_date %}
+        <tr>
+          <td>{{ row.date|date:"Y-m-d" }}</td>
+          <td class="num">{{ row.count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </fieldset>
+
+  {% endif %}
+</div>
+{% endblock %}
