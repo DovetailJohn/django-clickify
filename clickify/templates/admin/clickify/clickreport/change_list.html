@@ -3,6 +3,16 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extrastyle %}{{ block.super }}
+<style>
+  .report-table { width: 100%; border-collapse: collapse; }
+  .report-table th { padding: 8px; text-align: left; background: var(--header-bg, #f8f8f8); border-bottom: 2px solid var(--hairline-color, #ddd); }
+  .report-table td { padding: 8px; border-bottom: 1px solid var(--hairline-color, #ddd); }
+  .report-table tr:hover td { background: var(--darkened-bg, #f5f5f5); }
+  .report-table .num { text-align: right; }
+</style>
+{% endblock %}
+
 {% block breadcrumbs %}
   <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
@@ -43,14 +53,14 @@
   {# ── By UTM Source ── #}
   <fieldset class="module">
     <h2>By UTM Source</h2>
-    <table>
-      <thead><tr><th>Source</th><th>Clicks</th><th>%</th></tr></thead>
+    <table class="report-table">
+      <thead><tr><th>Source</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
       <tbody>
         {% for row in by_source %}
         <tr>
           <td>{{ row.utm_source }}</td>
-          <td>{{ row.count }}</td>
-          <td>{{ row.pct }}%</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -63,14 +73,14 @@
   {# ── By UTM Medium ── #}
   <fieldset class="module">
     <h2>By UTM Medium</h2>
-    <table>
-      <thead><tr><th>Medium</th><th>Clicks</th><th>%</th></tr></thead>
+    <table class="report-table">
+      <thead><tr><th>Medium</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
       <tbody>
         {% for row in by_medium %}
         <tr>
           <td>{{ row.utm_medium }}</td>
-          <td>{{ row.count }}</td>
-          <td>{{ row.pct }}%</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -83,14 +93,14 @@
   {# ── By Campaign ── #}
   <fieldset class="module">
     <h2>By Campaign</h2>
-    <table>
-      <thead><tr><th>Campaign</th><th>Clicks</th><th>%</th></tr></thead>
+    <table class="report-table">
+      <thead><tr><th>Campaign</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
       <tbody>
         {% for row in by_campaign %}
         <tr>
           <td>{{ row.utm_campaign }}</td>
-          <td>{{ row.count }}</td>
-          <td>{{ row.pct }}%</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -103,15 +113,15 @@
   {# ── By Tracked Link ── #}
   <fieldset class="module">
     <h2>By Tracked Link</h2>
-    <table>
-      <thead><tr><th>Link Name</th><th>Slug</th><th>Clicks</th><th>%</th></tr></thead>
+    <table class="report-table">
+      <thead><tr><th>Link Name</th><th>Slug</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
       <tbody>
         {% for row in by_link %}
         <tr>
           <td>{{ row.target__name }}</td>
           <td>{{ row.target__slug }}</td>
-          <td>{{ row.count }}</td>
-          <td>{{ row.pct }}%</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -124,14 +134,14 @@
   {# ── By Country ── #}
   <fieldset class="module">
     <h2>By Country</h2>
-    <table>
-      <thead><tr><th>Country</th><th>Clicks</th><th>%</th></tr></thead>
+    <table class="report-table">
+      <thead><tr><th>Country</th><th class="num">Clicks</th><th class="num">%</th></tr></thead>
       <tbody>
         {% for row in by_country %}
         <tr>
           <td>{{ row.country }}</td>
-          <td>{{ row.count }}</td>
-          <td>{{ row.pct }}%</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.pct }}%</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -144,13 +154,13 @@
   {# ── Over Time ── #}
   <fieldset class="module">
     <h2>Over Time (Daily)</h2>
-    <table>
-      <thead><tr><th>Date</th><th>Clicks</th></tr></thead>
+    <table class="report-table">
+      <thead><tr><th>Date</th><th class="num">Clicks</th></tr></thead>
       <tbody>
         {% for row in by_date %}
         <tr>
           <td>{{ row.date|date:"Y-m-d" }}</td>
-          <td>{{ row.count }}</td>
+          <td class="num">{{ row.count }}</td>
         </tr>
         {% endfor %}
       </tbody>
