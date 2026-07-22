@@ -199,3 +199,18 @@ class ClickLog(models.Model):
 
     def __str__(self):
         return f"Click on {self.target.name} at {self.timestamp}"
+
+
+class ClickReport(ClickLog):
+    """Proxy model for the Click Report admin dashboard.
+
+    No additional fields — exists solely to give the report its own
+    admin sidebar entry, decoupled from the ClickLog changelist.
+    """
+
+    class Meta:
+        """Proxy model metadata."""
+
+        proxy = True
+        verbose_name = "Click Report"
+        verbose_name_plural = "Click Reports"
