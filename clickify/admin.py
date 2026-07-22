@@ -1,7 +1,12 @@
+import datetime
+
 from django.contrib import admin, messages
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from django.template.response import TemplateResponse
 from django.utils.html import format_html
 
-from .models import ClickLog, TrackedLink, UtmMedium, UtmSource
+from .models import ClickLog, ClickReport, TrackedLink, UtmMedium, UtmSource
 from .qr_utils import get_qr_code_html, is_qr_enabled
 from .utils import get_geolocation
 
@@ -122,3 +127,97 @@ class ClickLogAdmin(admin.ModelAdmin):
         )
 
     update_geolocation.short_description = "Update geolocation for selected logs"
+
+
+@admin.register(ClickReport)
+class ClickReportAdmin(admin.ModelAdmin):
+    """Admin dashboard showing aggregated click report data."""
+
+    MAX_ROWS = 20
+
+    def has_add_permission(self, request):
+        """Reports are read-only — no adding."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Reports are read-only — no editing."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Reports are read-only — no deleting."""
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        """Render the click report dashboard instead of the default changelist."""
+        today = datetime.date.today()
+        default_start = today - datetime.timedelta(days=30)
+
+        start_str = request.GET.get("start", default_start.isoformat())
+        end_str = request.GET.get("end", today.isoformat())
+
+        try:
+            start_date = datetime.date.fromisoformat(start_str)
+        except ValueError:
+            start_date = default_start
+
+        try:
+            end_date = datetime.date.fromisoformat(end_str)
+        except ValueError:
+            end_date = today
+
+        qs = ClickLog.objects.filter(
+            timestamp__date__gte=start_date,
+            timestamp__date__lte=end_date,
+        )
+        total = qs.count()
+
+        def _breakdown(qs, *fields):
+            rows = list(
+                qs.values(*fields)
+                .annotate(count=Count("id"))
+                .order_by("-count")
+            )
+            for row in rows:
+                for f in fields:
+                    if not row[f]:
+                        row[f] = "(not set)"
+                row["pct"] = round(row["count"] / total * 100, 1) if total else 0
+            truncated = len(rows) - self.MAX_ROWS if len(rows) > self.MAX_ROWS else 0
+            return rows[: self.MAX_ROWS], truncated
+
+        by_source, source_extra = _breakdown(qs, "utm_source")
+        by_medium, medium_extra = _breakdown(qs, "utm_medium")
+        by_campaign, campaign_extra = _breakdown(qs, "utm_campaign")
+        by_link, link_extra = _breakdown(qs, "target__name", "target__slug")
+        by_country, country_extra = _breakdown(qs, "country")
+
+        by_date = list(
+            qs.values(date=TruncDate("timestamp"))
+            .annotate(count=Count("id"))
+            .order_by("date")
+        )
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Click Reports",
+            "opts": self.model._meta,
+            "start_date": start_str,
+            "end_date": end_str,
+            "total_clicks": total,
+            "by_source": by_source,
+            "source_extra": source_extra,
+            "by_medium": by_medium,
+            "medium_extra": medium_extra,
+            "by_campaign": by_campaign,
+            "campaign_extra": campaign_extra,
+            "by_link": by_link,
+            "link_extra": link_extra,
+            "by_date": by_date,
+            "by_country": by_country,
+            "country_extra": country_extra,
+        }
+        return TemplateResponse(
+            request,
+            "admin/clickify/clickreport/change_list.html",
+            context,
+        )
