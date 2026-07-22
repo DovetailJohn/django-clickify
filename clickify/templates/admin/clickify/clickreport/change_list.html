@@ -5,11 +5,11 @@
 
 {% block extrastyle %}{{ block.super }}
 <style>
-  .report-table { width: 100%; border-collapse: collapse; }
+  .report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .report-table th { padding: 8px; text-align: left; background: var(--header-bg, #f8f8f8); border-bottom: 2px solid var(--hairline-color, #ddd); }
-  .report-table td { padding: 8px; border-bottom: 1px solid var(--hairline-color, #ddd); }
+  .report-table td { padding: 8px; border-bottom: 1px solid var(--hairline-color, #ddd); overflow: hidden; text-overflow: ellipsis; }
   .report-table tr:hover td { background: var(--darkened-bg, #f5f5f5); }
-  .report-table .num { text-align: right; }
+  .report-table .num { text-align: right; width: 100px; }
 </style>
 {% endblock %}
 
