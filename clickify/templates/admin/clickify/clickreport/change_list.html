@@ -1,0 +1,162 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; {{ title }}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+  {# ── Date range filter ── #}
+  <fieldset class="module aligned">
+    <h2>Date Range</h2>
+    <form method="get" style="padding: 10px;">
+      <label for="id_start">Start:</label>
+      <input type="date" name="start" id="id_start" value="{{ start_date }}">
+      <label for="id_end" style="margin-left: 10px;">End:</label>
+      <input type="date" name="end" id="id_end" value="{{ end_date }}">
+      <input type="submit" value="Filter" class="default" style="margin-left: 10px;">
+    </form>
+  </fieldset>
+
+  {% if total_clicks == 0 %}
+    <fieldset class="module aligned">
+      <p style="padding: 10px;">No clicks recorded in this date range.</p>
+    </fieldset>
+  {% else %}
+
+  {# ── Headline ── #}
+  <fieldset class="module aligned">
+    <h2>Total Clicks</h2>
+    <p style="padding: 10px; font-size: 1.5em; font-weight: bold;">
+      {{ total_clicks|floatformat:0 }}
+    </p>
+  </fieldset>
+
+  {# ── By UTM Source ── #}
+  <fieldset class="module">
+    <h2>By UTM Source</h2>
+    <table>
+      <thead><tr><th>Source</th><th>Clicks</th><th>%</th></tr></thead>
+      <tbody>
+        {% for row in by_source %}
+        <tr>
+          <td>{{ row.utm_source }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if source_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ source_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By UTM Medium ── #}
+  <fieldset class="module">
+    <h2>By UTM Medium</h2>
+    <table>
+      <thead><tr><th>Medium</th><th>Clicks</th><th>%</th></tr></thead>
+      <tbody>
+        {% for row in by_medium %}
+        <tr>
+          <td>{{ row.utm_medium }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if medium_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ medium_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By Campaign ── #}
+  <fieldset class="module">
+    <h2>By Campaign</h2>
+    <table>
+      <thead><tr><th>Campaign</th><th>Clicks</th><th>%</th></tr></thead>
+      <tbody>
+        {% for row in by_campaign %}
+        <tr>
+          <td>{{ row.utm_campaign }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if campaign_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ campaign_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By Tracked Link ── #}
+  <fieldset class="module">
+    <h2>By Tracked Link</h2>
+    <table>
+      <thead><tr><th>Link Name</th><th>Slug</th><th>Clicks</th><th>%</th></tr></thead>
+      <tbody>
+        {% for row in by_link %}
+        <tr>
+          <td>{{ row.target__name }}</td>
+          <td>{{ row.target__slug }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if link_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ link_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── By Country ── #}
+  <fieldset class="module">
+    <h2>By Country</h2>
+    <table>
+      <thead><tr><th>Country</th><th>Clicks</th><th>%</th></tr></thead>
+      <tbody>
+        {% for row in by_country %}
+        <tr>
+          <td>{{ row.country }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if country_extra %}
+      <p style="padding: 5px 10px; color: #666;">(and {{ country_extra }} more)</p>
+    {% endif %}
+  </fieldset>
+
+  {# ── Over Time ── #}
+  <fieldset class="module">
+    <h2>Over Time (Daily)</h2>
+    <table>
+      <thead><tr><th>Date</th><th>Clicks</th></tr></thead>
+      <tbody>
+        {% for row in by_date %}
+        <tr>
+          <td>{{ row.date|date:"Y-m-d" }}</td>
+          <td>{{ row.count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </fieldset>
+
+  {% endif %}
+</div>
+{% endblock %}
