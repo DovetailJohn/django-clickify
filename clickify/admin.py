@@ -1,7 +1,7 @@
 import datetime
 
 from django.contrib import admin, messages
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
@@ -147,6 +147,40 @@ class ClickReportAdmin(admin.ModelAdmin):
         """Reports are read-only — no deleting."""
         return False
 
+    ALLOWED_FILTERS = {
+        "utm_source": "UTM Source",
+        "utm_medium": "UTM Medium",
+        "utm_campaign": "Campaign",
+        "target__slug": "Tracked Link",
+        "country": "Country",
+    }
+
+    def _parse_filters(self, request):
+        """Extract active filters from GET params and build query string helpers."""
+        active = []
+        for key, label in self.ALLOWED_FILTERS.items():
+            value = request.GET.get(key)
+            if value:
+                active.append({"key": key, "label": label, "value": value})
+        return active
+
+    def _build_query_string(self, start, end, active_filters, add=None, remove=None):
+        """Build a query string preserving date range and all active filters.
+
+        add: tuple (key, value) to include in the new query string
+        remove: key to exclude from the new query string
+        """
+        from urllib.parse import urlencode
+
+        params = {"start": start, "end": end}
+        for f in active_filters:
+            if remove and f["key"] == remove:
+                continue
+            params[f["key"]] = f["value"]
+        if add:
+            params[add[0]] = add[1]
+        return urlencode(params)
+
     def changelist_view(self, request, extra_context=None):
         """Render the click report dashboard instead of the default changelist."""
         today = datetime.date.today()
@@ -169,6 +203,16 @@ class ClickReportAdmin(admin.ModelAdmin):
             timestamp__date__gte=start_date,
             timestamp__date__lte=end_date,
         )
+
+        active_filters = self._parse_filters(request)
+        for f in active_filters:
+            if f["value"] == "(not set)":
+                qs = qs.filter(
+                    Q(**{f["key"]: None}) | Q(**{f["key"]: ""})
+                )
+            else:
+                qs = qs.filter(**{f["key"]: f["value"]})
+
         total = qs.count()
 
         def _breakdown(qs, *fields):
@@ -197,6 +241,13 @@ class ClickReportAdmin(admin.ModelAdmin):
             .order_by("date")
         )
 
+        base_qs = self._build_query_string(start_str, end_str, active_filters)
+        clear_qs = self._build_query_string(start_str, end_str, [])
+        for f in active_filters:
+            f["remove_qs"] = self._build_query_string(
+                start_str, end_str, active_filters, remove=f["key"],
+            )
+
         context = {
             **self.admin_site.each_context(request),
             "title": "Click Reports",
@@ -215,6 +266,9 @@ class ClickReportAdmin(admin.ModelAdmin):
             "by_date": by_date,
             "by_country": by_country,
             "country_extra": country_extra,
+            "active_filters": active_filters,
+            "base_qs": base_qs,
+            "clear_qs": clear_qs,
         }
         return TemplateResponse(
             request,

@@ -10,6 +10,11 @@
   .report-table td { padding: 8px; border-bottom: 1px solid var(--hairline-color, #ddd); overflow: hidden; text-overflow: ellipsis; }
   .report-table tr:hover td { background: var(--darkened-bg, #f5f5f5); }
   .report-table .num { text-align: right; width: 100px; }
+  .report-table a { text-decoration: none; color: var(--link-fg, #417690); }
+  .report-table a:hover { text-decoration: underline; }
+  .filter-banner { padding: 10px; background: var(--message-success-bg, #dfd); border: 1px solid var(--hairline-color, #ddd); margin-bottom: 0; }
+  .filter-tag { display: inline-block; padding: 3px 8px; margin: 0 4px; background: var(--header-bg, #f8f8f8); border: 1px solid var(--hairline-color, #ccc); border-radius: 3px; }
+  .filter-tag a { color: var(--link-fg, #417690); text-decoration: none; margin-left: 4px; }
 </style>
 {% endblock %}
 
@@ -32,9 +37,28 @@
       <input type="date" name="start" id="id_start" value="{{ start_date }}">
       <label for="id_end" style="margin-left: 10px;">End:</label>
       <input type="date" name="end" id="id_end" value="{{ end_date }}">
+      {% for f in active_filters %}
+        <input type="hidden" name="{{ f.key }}" value="{{ f.value }}">
+      {% endfor %}
       <input type="submit" value="Filter" class="default" style="margin-left: 10px;">
     </form>
   </fieldset>
+
+  {# ── Active filters banner ── #}
+  {% if active_filters %}
+  <fieldset class="module aligned">
+    <div class="filter-banner">
+      <strong>Filtered by:</strong>
+      {% for f in active_filters %}
+        <span class="filter-tag">
+          {{ f.label }}: {{ f.value }}
+          <a href="?{{ f.remove_qs }}" title="Remove this filter">&times;</a>
+        </span>
+      {% endfor %}
+      &nbsp; <a href="?{{ clear_qs }}">Clear all</a>
+    </div>
+  </fieldset>
+  {% endif %}
 
   {% if total_clicks == 0 %}
     <fieldset class="module aligned">
@@ -58,7 +82,7 @@
       <tbody>
         {% for row in by_source %}
         <tr>
-          <td>{{ row.utm_source }}</td>
+          <td><a href="?{{ base_qs }}&utm_source={{ row.utm_source|urlencode }}">{{ row.utm_source }}</a></td>
           <td class="num">{{ row.count }}</td>
           <td class="num">{{ row.pct }}%</td>
         </tr>
@@ -78,7 +102,7 @@
       <tbody>
         {% for row in by_medium %}
         <tr>
-          <td>{{ row.utm_medium }}</td>
+          <td><a href="?{{ base_qs }}&utm_medium={{ row.utm_medium|urlencode }}">{{ row.utm_medium }}</a></td>
           <td class="num">{{ row.count }}</td>
           <td class="num">{{ row.pct }}%</td>
         </tr>
@@ -98,7 +122,7 @@
       <tbody>
         {% for row in by_campaign %}
         <tr>
-          <td>{{ row.utm_campaign }}</td>
+          <td><a href="?{{ base_qs }}&utm_campaign={{ row.utm_campaign|urlencode }}">{{ row.utm_campaign }}</a></td>
           <td class="num">{{ row.count }}</td>
           <td class="num">{{ row.pct }}%</td>
         </tr>
@@ -119,7 +143,7 @@
         {% for row in by_link %}
         <tr>
           <td>{{ row.target__name }}</td>
-          <td>{{ row.target__slug }}</td>
+          <td><a href="?{{ base_qs }}&target__slug={{ row.target__slug|urlencode }}">{{ row.target__slug }}</a></td>
           <td class="num">{{ row.count }}</td>
           <td class="num">{{ row.pct }}%</td>
         </tr>
@@ -139,7 +163,7 @@
       <tbody>
         {% for row in by_country %}
         <tr>
-          <td>{{ row.country }}</td>
+          <td><a href="?{{ base_qs }}&country={{ row.country|urlencode }}">{{ row.country }}</a></td>
           <td class="num">{{ row.count }}</td>
           <td class="num">{{ row.pct }}%</td>
         </tr>

@@ -142,3 +142,79 @@ class TestReadOnly(ClickReportAdminTestBase):
         response = self.client.get(self.url)
         content = response.content.decode()
         assert "Add click report" not in content
+
+
+class TestDrillDownFilter(ClickReportAdminTestBase):
+    def test_single_filter_narrows_results(self):
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email", utm_medium="cpc",
+        )
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="google", utm_medium="organic",
+        )
+        response = self.client.get(self.url + "?utm_source=email")
+        content = response.content.decode()
+        assert "100.0%" in content
+        assert "google" not in content
+
+    def test_multi_filter_stacks(self):
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email", utm_medium="cpc",
+        )
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email", utm_medium="organic",
+        )
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="google", utm_medium="cpc",
+        )
+        response = self.client.get(
+            self.url + "?utm_source=email&utm_medium=cpc"
+        )
+        content = response.content.decode()
+        assert ">1<" in content.replace(" ", "")
+
+    def test_filter_banner_shows_active_filters(self):
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email",
+        )
+        response = self.client.get(self.url + "?utm_source=email")
+        content = response.content.decode()
+        assert "Filtered by:" in content
+        assert "UTM Source" in content
+        assert "email" in content
+
+    def test_clear_all_link_present(self):
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email",
+        )
+        response = self.client.get(self.url + "?utm_source=email")
+        assert "Clear all" in response.content.decode()
+
+    def test_not_set_filter_works(self):
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source=None,
+        )
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email",
+        )
+        response = self.client.get(self.url + "?utm_source=(not+set)")
+        content = response.content.decode()
+        assert "100.0%" in content
+
+    def test_invalid_filter_key_ignored(self):
+        ClickLog.objects.create(
+            target=self.link, ip_address="1.2.3.4", user_agent="bot",
+            utm_source="email",
+        )
+        response = self.client.get(self.url + "?bogus_field=hack")
+        assert response.status_code == 200
+        assert "Filtered by:" not in response.content.decode()
