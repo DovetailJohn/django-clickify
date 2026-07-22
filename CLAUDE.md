@@ -2,47 +2,58 @@
 
 ## Environment
 
-This is a **Django library** (no `manage.py`). Tests and migrations run via Poetry.
-
-Poetry installs to `~/.local/bin`. If `poetry` is not found, add it to PATH first:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-To make this permanent in the container:
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
-```
+This is a **Django library** (no `manage.py`). Tests and migrations can run via Poetry or a local `.venv`.
 
 ## Installing dependencies
 
+**Option A — venv (preferred, no Poetry required):**
+
 ```bash
-poetry install
+make setup
 ```
 
-Creates a virtualenv under `~/.cache/pypoetry/virtualenvs/` and installs all dependencies from `poetry.lock`. Only needed once per environment (or after adding new dependencies to `pyproject.toml`).
+Creates `.venv/`, installs the package and all dev dependencies.
+
+**Option B — Poetry:**
+
+Poetry installs to `~/.local/bin`. If `poetry` is not found, add it to PATH:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+poetry install
+```
 
 ## Running tests
 
 ```bash
-poetry run pytest
+make test
 ```
 
-Runs the full suite with coverage. Django settings come from `tests/settings.py` (configured via `DJANGO_SETTINGS_MODULE` in `pyproject.toml`). The in-memory SQLite database runs all migrations on every test run — a migration failure shows up here before any test executes.
+Automatically detects Poetry, `.venv`, or system Python. Django settings come from `tests/settings.py`. The in-memory SQLite database runs all migrations on every test run — a migration failure shows up here before any test executes.
 
 To run a specific test file:
 
 ```bash
+.venv/bin/python -m pytest tests/test_utm.py
+# or with Poetry:
 poetry run pytest tests/test_utm.py
+```
+
+## Linting
+
+```bash
+.venv/bin/ruff check clickify/ tests/
+# or:
+make check
 ```
 
 ## Generating migrations
 
-There is no `manage.py`. Use `django-admin` through Poetry with the test settings:
+There is no `manage.py`. Use `django-admin` with the test settings:
 
 ```bash
+.venv/bin/django-admin makemigrations clickify --settings=tests.settings
+# or with Poetry:
 poetry run django-admin makemigrations clickify --settings=tests.settings
 ```
 
